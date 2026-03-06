@@ -1,0 +1,51 @@
+import json
+import boto3
+import uuid
+
+s3 = boto3.client("s3")
+
+BUCKET_NAME = "bedrock-agent-data143"
+
+def lambda_handler(event, context):
+
+    print("Event received:", json.dumps(event))
+
+    action_group = event['actionGroup']
+    function = event['function']
+
+    parameters = event.get('parameters', [])
+
+    if parameters:
+        payload = parameters[0]['value']
+    else:
+        payload = {"message":"no data"}
+
+    if isinstance(payload,str):
+        payload=json.loads(payload)
+
+    file_name = str(uuid.uuid4()) + ".json"
+
+    s3.put_object(
+        Bucket=BUCKET_NAME,
+        Key=file_name,
+        Body=json.dumps(payload)
+    )
+
+    response_body = {
+        "TEXT": {
+            "body": f"File stored successfully in S3: {file_name}"
+        }
+    }
+
+    action_response = {
+        "actionGroup": action_group,
+        "function": function,
+        "functionResponse": {
+            "responseBody": response_body
+        }
+    }
+
+    return {
+        "response": action_response,
+        "messageVersion": "1.0"
+    }
